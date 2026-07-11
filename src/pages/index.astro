@@ -1,0 +1,170 @@
+---
+const title = 'Pulsewatch — API status monitor';
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Monitoriza el estado de tus APIs por WebSocket." />
+    <title>{title}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#dashboard"><span class="brand-mark">P</span><span>PULSE<span>WATCH</span></span></a>
+        <nav aria-label="Navegación principal">
+          <button class="nav-link active" data-view="dashboard"><span>◉</span>Vista general</button>
+          <button class="nav-link" data-view="services"><span>⌘</span>Servicios <b id="serviceCount">0</b></button>
+          <button class="nav-link" data-view="activity"><span>◌</span>Actividad</button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="connection-state"><span class="pulse-dot"></span><span id="monitorState">Monitor activo</span></div>
+          <button id="openSettings" class="nav-link"><span>⚙</span>Ajustes</button>
+        </div>
+      </aside>
+
+      <main>
+        <header class="topbar">
+          <div><p class="eyebrow" id="viewKicker">MONITORIZACIÓN EN DIRECTO</p><h1 id="viewTitle">Vista general</h1></div>
+          <div class="header-actions"><span class="last-update" id="lastUpdate">Actualizando…</span><button class="button primary" id="addService">+ Añadir servicio</button></div>
+        </header>
+
+        <section class="view active" id="dashboardView">
+          <div class="summary-strip">
+            <div><span class="summary-label">SERVICIOS ACTIVOS</span><strong id="activeTotal">0</strong><small id="activeDetail">Conectando…</small></div>
+            <div><span class="summary-label">DISPONIBILIDAD</span><strong id="uptimeTotal">—</strong><small>Últimas 24 horas</small></div>
+            <div><span class="summary-label">INCIDENCIAS</span><strong id="incidentTotal">0</strong><small>En este momento</small></div>
+            <div class="clock"><span class="summary-label">HORA LOCAL</span><strong id="clock">00:00</strong><small>Europe/Madrid</small></div>
+          </div>
+          <div class="section-heading"><div><h2>Estado de servicios</h2><p>Conexiones verificadas por WebSocket.</p></div><button class="text-button" data-go="services">Gestionar todos <span>→</span></button></div>
+          <div id="statusList" class="status-list"></div>
+          <div class="dashboard-footer"><span id="dashboardPagination"></span><button class="text-button" id="refreshAll">↻ Reconectar todo</button></div>
+        </section>
+
+        <section class="view" id="servicesView">
+          <div class="toolbar"><label class="search"><span>⌕</span><input id="searchInput" placeholder="Buscar por nombre o URL" /></label><select id="statusFilter"><option value="all">Todos los estados</option><option value="online">Operativos</option><option value="offline">Sin conexión</option><option value="connecting">Conectando</option></select></div>
+          <div id="servicesTable" class="services-table"></div>
+          <div class="pagination"><button id="prevPage" aria-label="Página anterior">←</button><span id="pageInfo"></span><button id="nextPage" aria-label="Página siguiente">→</button></div>
+        </section>
+
+        <section class="view" id="activityView">
+          <div class="activity-intro"><h2>Registro de actividad</h2><p>Eventos de conexión de esta sesión. Se conservan las últimas 100 acciones.</p><button class="text-button" id="clearActivity">Limpiar registro</button></div>
+          <div id="activityList" class="activity-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="serviceDialog">
+      <form method="dialog" id="serviceForm">
+        <div class="modal-head"><div><p class="eyebrow" id="formKicker">NUEVO ENDPOINT</p><h2 id="formTitle">Añadir servicio</h2></div><button type="button" class="close" data-close-dialog aria-label="Cerrar">×</button></div>
+        <input type="hidden" id="serviceId" />
+        <label>Nombre del servicio<input required id="serviceName" maxlength="48" placeholder="Ej. API de facturación" /></label>
+        <label>URL base<input required id="serviceUrl" type="url" placeholder="https://api.ejemplo.com" /><small>Se conectará automáticamente a <code>/status</code>.</small></label>
+        <label class="toggle-row"><input type="checkbox" id="serviceEnabled" checked /><span><b>Monitorización activa</b><small>Conecta al guardar y al iniciar la aplicación.</small></span></label>
+        <div class="modal-actions"><button type="button" data-close-dialog class="button ghost">Cancelar</button><button class="button primary" id="saveService" value="default">Guardar servicio</button></div>
+      </form>
+    </dialog>
+    <dialog id="settingsDialog"><form method="dialog"><div class="modal-head"><div><p class="eyebrow">PREFERENCIAS</p><h2>Ajustes del monitor</h2></div><button type="button" class="close" data-close-dialog>×</button></div><label>Intervalo de reconexión<select id="reconnectInterval"><option value="5000">5 segundos</option><option value="10000">10 segundos</option><option value="30000">30 segundos</option></select></label><p class="settings-note">Las conexiones cerradas se intentarán recuperar automáticamente mientras el monitor esté activo.</p><div class="modal-actions"><button class="button primary" value="default" id="saveSettings">Guardar ajustes</button></div></form></dialog>
+    <script>
+      import '../scripts/monitor.ts';
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  .toolbar select, dialog select { padding-right: 32px; }
+  /* Refined operational layout: each service stays a single readable unit at every width. */
+  .status-row { grid-template-columns: 10px minmax(150px, 1.05fr) minmax(220px, 1.7fr) 82px 106px 38px; column-gap: 18px; min-width: 0; padding: 20px 10px; }
+  .status-row > * { min-width: 0; }
+  .status-name { font-size: 13px; letter-spacing: -.15px; }
+  .status-url { font-size: 10px; letter-spacing: -.1px; }
+  .status-meta { text-align: right; }
+  .state { justify-self: end; white-space: nowrap; }
+  .row-menu { justify-self: end; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 5px; line-height: 1; transition: background .16s ease, color .16s ease; }
+  .row-menu:hover { color: var(--green); background: #232a28; }
+  .section-heading { gap: 24px; }
+  .section-heading h2 { font-size: 20px; }
+  .section-heading p { line-height: 1.5; }
+  .dashboard-footer { padding: 2px 8px; }
+  @media (max-width: 1080px) {
+    .status-row { grid-template-columns: 10px minmax(150px, 1fr) minmax(180px, 1.35fr) 100px 38px; }
+    .status-row .status-meta { display: none; }
+  }
+  @media (max-width: 640px) {
+    main { padding: 25px 18px; }
+    .topbar { gap: 18px; align-items: flex-start; }
+    .topbar h1 { font-size: 25px; }
+    .header-actions { gap: 8px; }
+    .header-actions .button { padding: 9px 11px; white-space: nowrap; }
+    .summary-strip { border-radius: 8px; }
+    .summary-strip strong { font-size: 25px; }
+    .section-heading { align-items: flex-start; margin-bottom: 13px; }
+    .section-heading h2 { font-size: 18px; }
+    .section-heading .text-button { padding-top: 2px; white-space: nowrap; }
+    .status-list { border-top-color: #39413f; }
+    .status-row { grid-template-columns: 10px minmax(0, 1fr) 30px; grid-template-rows: auto auto auto; column-gap: 11px; row-gap: 4px; padding: 17px 3px; align-items: start; }
+    .status-row .dot { grid-column: 1; grid-row: 1; margin-top: 5px; }
+    .status-row > div:first-of-type { grid-column: 2; grid-row: 1; }
+    .status-row .status-url { display: block; grid-column: 2; grid-row: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; color: #98a5a1; }
+    .status-row .state { display: block; grid-column: 2; grid-row: 3; justify-self: start; padding-top: 3px; }
+    .status-row .row-menu { grid-column: 3; grid-row: 1; justify-self: end; margin-top: -5px; }
+    .dashboard-footer { padding: 5px 3px; }
+    .toolbar { align-items: center; }
+    .toolbar select { max-width: 142px; }
+    .service-row { row-gap: 5px; }
+  }
+  @media (max-width: 420px) {
+    .summary-strip { grid-template-columns: 1fr 1fr; }
+    .summary-strip > div { padding: 16px 14px; }
+    .summary-strip .clock { display: none; }
+    .section-heading .text-button { font-size: 11px; }
+  }
+  :root { --bg:#0d1010; --panel:#151919; --line:#2a3030; --muted:#8f9998; --text:#edf2f0; --green:#a8e66d; --red:#ff8375; --amber:#ffcd70; --mono:'DM Mono',monospace; --sans:'Manrope',sans-serif; }
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px} button,input,select{font:inherit} button{cursor:pointer} .app-shell{display:grid;grid-template-columns:244px 1fr;min-height:100vh}.sidebar{position:fixed;width:244px;height:100vh;background:#111515;border-right:1px solid var(--line);padding:29px 18px;display:flex;flex-direction:column}.brand{color:#f1f6f3;text-decoration:none;font-weight:800;letter-spacing:-.8px;display:flex;gap:10px;align-items:center;font-size:15px}.brand span span{color:var(--green);font-size:10px;letter-spacing:1px;margin-left:3px}.brand-mark{display:grid;place-items:center;width:28px;height:28px;border:1px solid var(--green);border-radius:7px;color:var(--green);font-family:var(--mono);font-size:13px}nav{margin-top:57px;display:grid;gap:5px}.nav-link{border:0;background:transparent;color:#aeb8b5;width:100%;text-align:left;border-radius:7px;padding:11px 10px;display:flex;align-items:center;gap:11px;font-weight:600}.nav-link span{color:#72807d;font-size:17px;width:16px;text-align:center}.nav-link.active,.nav-link:hover{background:#202524;color:#f4f7f4}.nav-link.active span{color:var(--green)}.nav-link b{margin-left:auto;font:11px var(--mono);background:#303837;color:#cbd6d2;padding:2px 6px;border-radius:9px}.sidebar-bottom{margin-top:auto}.connection-state{font:12px var(--mono);color:#aeb8b5;border-top:1px solid var(--line);padding:18px 10px 14px;display:flex;align-items:center;gap:8px}.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px #a8e66d1a;animation:pulse 2s infinite}@keyframes pulse{50%{box-shadow:0 0 0 8px #a8e66d00}}main{grid-column:2;padding:42px clamp(28px,5vw,78px);max-width:1600px;width:100%;margin:auto}.topbar{display:flex;justify-content:space-between;align-items:start;margin-bottom:44px}.eyebrow,.summary-label{font:10px var(--mono);letter-spacing:1.15px;color:var(--muted);margin:0 0 8px}h1,h2,p{margin-top:0}h1{font-size:29px;letter-spacing:-1.2px;margin-bottom:0}h2{font-size:18px;letter-spacing:-.5px;margin-bottom:6px}.header-actions{display:flex;align-items:center;gap:18px}.last-update{font:11px var(--mono);color:var(--muted)}.button{border:1px solid transparent;border-radius:6px;padding:10px 14px;font-weight:700;font-size:12px}.primary{background:var(--green);color:#182013}.primary:hover{background:#c1f58f}.ghost{background:transparent;border-color:#414847;color:#dbe2df}.summary-strip{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:9px;background:var(--panel);margin-bottom:51px}.summary-strip>div{min-height:128px;padding:25px 26px;border-right:1px solid var(--line);display:flex;flex-direction:column}.summary-strip>div:last-child{border:0}.summary-strip strong{font-size:29px;letter-spacing:-1.4px;line-height:1.2}.summary-strip small{font:11px var(--mono);color:var(--muted);margin-top:5px}.clock{background:#1a201f}.section-heading{display:flex;justify-content:space-between;align-items:end;margin-bottom:18px}.section-heading p,.activity-intro p{color:var(--muted);font-size:12px;margin:0}.text-button{background:none;border:0;color:var(--green);font-weight:700;font-size:12px;padding:5px}.text-button span{font-size:16px;margin-left:4px}.status-list{border-top:1px solid var(--line)}.status-row{display:grid;grid-template-columns:12px minmax(180px,1.1fr) minmax(190px,1.7fr) 115px 90px 105px;align-items:center;gap:15px;padding:19px 8px;border-bottom:1px solid var(--line);animation:enter .35s both}@keyframes enter{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}.status-name{font-weight:700}.status-url{font:11px var(--mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.status-meta{font:11px var(--mono);color:#c2cac7}.state{font:10px var(--mono);letter-spacing:.6px}.state.online{color:var(--green)}.state.offline{color:var(--red)}.state.connecting{color:var(--amber)}.dot{width:8px;height:8px;border-radius:50%;background:var(--amber)}.dot.online{background:var(--green);box-shadow:0 0 10px #a8e66d88}.dot.offline{background:var(--red)}.row-menu{border:0;background:transparent;color:#899592;font-size:17px;letter-spacing:2px}.dashboard-footer{display:flex;justify-content:space-between;margin-top:18px;color:var(--muted);font:11px var(--mono)}.view{display:none}.view.active{display:block}.toolbar{display:flex;justify-content:space-between;margin:-4px 0 23px}.search{display:flex;align-items:center;gap:8px;border-bottom:1px solid #56605d;padding:4px 0;color:#9da8a5;width:315px}.search input{color:#edf2f0;background:transparent;border:0;outline:0;width:100%;font-size:12px}.toolbar select,dialog select{background:#1a1f1e;color:#d8e0dc;border:1px solid #404947;padding:8px 9px;border-radius:5px;font-size:12px}.services-table{border:1px solid var(--line);border-radius:8px;overflow:hidden}.table-head,.service-row{display:grid;grid-template-columns:1.1fr 1.7fr 110px 125px 70px;gap:14px;align-items:center;padding:15px 19px}.table-head{font:10px var(--mono);letter-spacing:.8px;color:var(--muted);background:#171b1b}.service-row{border-top:1px solid var(--line);min-height:70px}.service-row .state{justify-self:start}.actions{display:flex;gap:4px}.icon-button{background:transparent;border:0;color:#aeb8b5;padding:6px;border-radius:4px}.icon-button:hover{color:var(--green);background:#26302b}.pagination{display:flex;justify-content:center;align-items:center;gap:15px;margin-top:24px;font:11px var(--mono);color:var(--muted)}.pagination button{background:#1b201f;border:1px solid var(--line);color:var(--text);width:30px;height:28px;border-radius:4px}.pagination button:disabled{opacity:.35}.activity-intro{position:relative;border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:4px}.activity-intro .text-button{position:absolute;right:0;bottom:15px}.activity-row{display:grid;grid-template-columns:70px 12px 1fr 120px;gap:13px;align-items:center;border-bottom:1px solid var(--line);padding:14px 4px;font-size:12px}.activity-row time{font:10px var(--mono);color:var(--muted)}.empty{padding:50px 10px;color:var(--muted);font:12px var(--mono);text-align:center}dialog{width:min(480px,calc(100vw - 30px));background:#171c1b;border:1px solid #414a47;border-radius:10px;color:var(--text);padding:0;box-shadow:0 20px 90px #0009}dialog::backdrop{background:#070909aa;backdrop-filter:blur(3px)}dialog form{padding:27px}.modal-head{display:flex;justify-content:space-between;margin-bottom:28px}.modal-head h2{font-size:21px;margin:0}.close{border:0;background:transparent;color:#a5afac;font-size:25px;line-height:20px}dialog label{display:block;font-weight:700;font-size:12px;margin:17px 0}dialog input:not([type=checkbox]),dialog select{display:block;width:100%;margin-top:8px;padding:11px;background:#101414;border:1px solid #39423f;border-radius:5px;color:#edf2f0;outline-color:var(--green)}dialog small{display:block;font-weight:400;color:var(--muted);font-size:11px;margin-top:7px}code{font-family:var(--mono);color:#c9d5d0}.toggle-row{display:flex;gap:10px;align-items:start;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.toggle-row input{accent-color:var(--green);margin-top:4px}.modal-actions{display:flex;justify-content:end;gap:10px;margin-top:24px}.settings-note{color:var(--muted);font-size:12px;line-height:1.6}@media(max-width:800px){.app-shell{display:block}.sidebar{position:sticky;top:0;width:100%;height:auto;z-index:5;padding:13px 18px;flex-direction:row;align-items:center}.sidebar nav{margin:0 0 0 auto;display:flex}.nav-link{width:auto;padding:7px 8px;font-size:0}.nav-link span{font-size:16px}.nav-link b,.sidebar-bottom{display:none}main{padding:30px 19px}.topbar{margin-bottom:30px}.header-actions .last-update{display:none}.summary-strip{grid-template-columns:repeat(2,1fr);margin-bottom:33px}.summary-strip>div{min-height:102px;padding:18px;border-bottom:1px solid var(--line)}.summary-strip>div:nth-child(2){border-right:0}.status-row{grid-template-columns:10px 1fr 75px 25px;padding:15px 2px}.status-url,.status-meta{display:none}.table-head{display:none}.service-row{grid-template-columns:1fr 90px 60px;padding:14px}.service-row .status-url{display:none}.activity-row{grid-template-columns:60px 10px 1fr}.activity-row .state{display:none}.toolbar{gap:12px}.search{width:100%}.toolbar select{max-width:130px}}
+  /* Keep these responsive overrides last: the base stylesheet above is intentionally compact. */
+  .status-row { grid-template-columns: 10px minmax(150px,1.05fr) minmax(220px,1.7fr) 82px 106px 38px; column-gap:18px; padding:20px 10px; }
+  .status-row { animation: none; }
+  .status-row > * { min-width:0; }
+  .status-name { font-size:13px; letter-spacing:-.15px; }
+  .status-url { font-size:10px; letter-spacing:-.1px; }
+  .status-meta { text-align:right; }
+  .state { justify-self:end; white-space:nowrap; }
+  .row-menu { justify-self:end; width:28px; height:28px; display:grid; place-items:center; border-radius:5px; line-height:1; }
+  @media (max-width:1080px) { .status-row { grid-template-columns:10px minmax(150px,1fr) minmax(180px,1.35fr) 100px 38px; } .status-row .status-meta { display:none; } }
+  @media (max-width:640px) {
+    main { padding:25px 18px; } .topbar { gap:18px; align-items:flex-start; } .topbar h1 { font-size:25px; } .header-actions { gap:8px; } .header-actions .button { padding:9px 11px; white-space:nowrap; }
+    .section-heading { align-items:flex-start; gap:14px; margin-bottom:13px; } .section-heading h2 { font-size:18px; } .section-heading .text-button { padding-top:2px; white-space:nowrap; }
+    .status-list { border-top-color:#39413f; }
+    .status-row { grid-template-columns:10px minmax(0,1fr) 30px; grid-template-rows:auto auto auto; column-gap:11px; row-gap:4px; padding:17px 3px; align-items:start; }
+    .status-row .dot { grid-column:1; grid-row:1; margin-top:5px; } .status-row > div:first-of-type { grid-column:2; grid-row:1; }
+    .status-row .status-url { display:block; grid-column:2; grid-row:2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; color:#98a5a1; }
+    .status-row .state { display:block; grid-column:2; grid-row:3; justify-self:start; padding-top:3px; }
+    .status-row .row-menu { grid-column:3; grid-row:1; justify-self:end; margin-top:-5px; }
+    .dashboard-footer { padding:5px 3px; } .toolbar select { max-width:142px; }
+  }
+  @media (max-width:420px) { .summary-strip > div { padding:16px 14px; } .summary-strip .clock { display:none; } .section-heading .text-button { font-size:11px; } }
+  /* Comfortable density: operational information stays compact, never tiny. */
+  body { font-size:15px; }
+  main { max-width:none; width:100%; justify-self:stretch; margin:0; padding-inline:clamp(42px,5.5vw,112px); }
+  h1 { font-size:32px; } h2, .section-heading h2 { font-size:21px; }
+  .eyebrow, .summary-label { font-size:11px; }
+  .button { font-size:13px; padding:11px 16px; }
+  .nav-link { font-size:14px; padding:12px 11px; }
+  .summary-strip strong { font-size:33px; } .summary-strip small, .last-update { font-size:12px; }
+  .section-heading p, .activity-intro p { font-size:13px; } .text-button { font-size:13px; }
+  .status-row { padding-block:22px; } .status-name { font-size:15px; } .status-url, .status-meta { font-size:11px; } .state { font-size:11px; } .row-menu { font-size:19px; }
+  .toolbar select, .search input { font-size:13px; }
+  dialog select { appearance:none; -webkit-appearance:none; padding-right:58px; background-color:#101414; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='m1 1 6 6 6-6' fill='none' stroke='%23edf2f0' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 24px center; background-size:14px 9px; }
+  @media (max-width:640px) { h1 { font-size:27px; } .summary-strip strong { font-size:28px; } .status-name { font-size:14px; } .status-row { padding-block:19px; } }
+  body { font-size:16px; }
+  h1 { font-size:34px; } h2, .section-heading h2 { font-size:23px; }
+  .summary-strip strong { font-size:35px; } .summary-strip small, .last-update { font-size:13px; }
+  .section-heading p, .activity-intro p { font-size:14px; } .text-button, .button { font-size:14px; }
+  .status-name { font-size:16px; } .status-url, .status-meta { font-size:12px; } .state { font-size:12px; }
+  @media (max-width:640px) { body { font-size:15px; } h1 { font-size:29px; } h2, .section-heading h2 { font-size:20px; } .summary-strip strong { font-size:30px; } .status-name { font-size:15px; } }
+</style>
