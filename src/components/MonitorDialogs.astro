@@ -1,0 +1,67 @@
+<dialog id="serviceDialog" aria-labelledby="formTitle">
+  <form id="serviceForm" novalidate>
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow" id="formKicker">NUEVO ENDPOINT</p>
+        <h2 id="formTitle">Añadir servicio</h2>
+      </div>
+      <button class="icon-button dialog-close" data-close-dialog type="button" aria-label="Cerrar formulario">×</button>
+    </div>
+
+    <input id="serviceId" type="hidden" />
+
+    <label class="form-field" for="serviceName">
+      <span>Nombre del servicio</span>
+      <input id="serviceName" maxlength="48" placeholder="Ej. API de facturación" required />
+    </label>
+
+    <label class="form-field" for="serviceUrl">
+      <span>URL base</span>
+      <input id="serviceUrl" placeholder="https://api.ejemplo.com" required type="url" />
+      <small>Se conectará automáticamente a <code>/status</code>.</small>
+    </label>
+
+    <label class="toggle-field" for="serviceEnabled">
+      <input id="serviceEnabled" type="checkbox" checked />
+      <span>
+        <strong>Monitorización activa</strong>
+        <small>El monitor conectará el servicio al guardarlo.</small>
+      </span>
+    </label>
+
+    <p class="form-message" id="serviceFormMessage" aria-live="polite"></p>
+
+    <div class="dialog-actions">
+      <button class="button button-secondary" data-close-dialog type="button">Cancelar</button>
+      <button class="button button-primary" type="submit">Guardar servicio</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="settingsDialog" aria-labelledby="settingsTitle">
+  <form id="settingsForm">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">PREFERENCIAS</p>
+        <h2 id="settingsTitle">Ajustes del panel</h2>
+      </div>
+      <button class="icon-button dialog-close" data-close-dialog type="button" aria-label="Cerrar ajustes">×</button>
+    </div>
+
+    <label class="form-field" for="reconnectInterval">
+      <span>Reintento de conexión del panel</span>
+      <select id="reconnectInterval">
+        <option value="3000">3 segundos</option>
+        <option value="5000">5 segundos</option>
+        <option value="10000">10 segundos</option>
+      </select>
+      <small>Solo afecta a la conexión de esta interfaz con el monitor central.</small>
+    </label>
+
+    <div class="dialog-actions">
+      <button class="button button-primary" type="submit">Guardar ajustes</button>
+    </div>
+  </form>
+</dialog>
+
+<p class="toast" id="toast" role="status" aria-live="polite" hidden></p>

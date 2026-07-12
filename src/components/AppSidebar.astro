@@ -1,0 +1,33 @@
+<aside class="sidebar" aria-label="Navegación principal">
+  <a class="brand" href="#dashboardView" aria-label="Pulsewatch, ir al panel">
+    <span class="brand-mark" aria-hidden="true">P</span>
+    <span class="brand-name">PULSE<span>WATCH</span></span>
+  </a>
+
+  <nav class="primary-nav" aria-label="Vistas del monitor">
+    <button class="nav-link is-active" data-view="dashboard" type="button">
+      <span class="nav-icon" aria-hidden="true">◉</span>
+      <span>Vista general</span>
+    </button>
+    <button class="nav-link" data-view="services" type="button">
+      <span class="nav-icon" aria-hidden="true">⌘</span>
+      <span>Servicios</span>
+      <span class="nav-count" id="serviceCount">0</span>
+    </button>
+    <button class="nav-link" data-view="activity" type="button">
+      <span class="nav-icon" aria-hidden="true">◌</span>
+      <span>Actividad</span>
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <p class="connection-state" aria-live="polite">
+      <span class="pulse-dot" aria-hidden="true"></span>
+      <span id="monitorState">Conectando al monitor…</span>
+    </p>
+    <button class="nav-link" id="openSettings" type="button">
+      <span class="nav-icon" aria-hidden="true">⚙</span>
+      <span>Ajustes</span>
+    </button>
+  </div>
+</aside>

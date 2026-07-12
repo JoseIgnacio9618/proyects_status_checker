@@ -1,51 +1,80 @@
 import http from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
-import { extname, join, resolve, sep } from 'node:path';
-import { WebSocketServer, WebSocket } from 'ws';
+import { extname, resolve, sep } from 'node:path';
+import { attachRealtimeHub } from './realtime-hub.mjs';
 
 process.env.ASTRO_NODE_AUTOSTART = 'disabled';
+
 const { handler } = await import('./dist/server/entry.mjs');
+const port = Number(process.env.PORT ?? 4321);
 const clientDirectory = resolve(process.cwd(), 'dist/client');
-const contentTypes = { '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.png': 'image/png', '.webp': 'image/webp', '.json': 'application/json; charset=utf-8' };
-function serveStatic(request, response) {
+
+const contentTypes = {
+  '.css': 'text/css; charset=utf-8',
+  '.ico': 'image/x-icon',
+  '.js': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+};
+
+function serveStaticAsset(request, response) {
   if (request.method !== 'GET' && request.method !== 'HEAD') return false;
-  const pathname = decodeURIComponent(new URL(request.url ?? '/', 'http://localhost').pathname);
-  const candidate = resolve(clientDirectory, `.${pathname}`);
-  if (!candidate.startsWith(`${clientDirectory}${sep}`) || !existsSync(candidate) || !statSync(candidate).isFile()) return false;
-  response.writeHead(200, { 'Content-Type': contentTypes[extname(candidate)] ?? 'application/octet-stream', 'Cache-Control': 'public, max-age=31536000, immutable' });
-  if (request.method === 'HEAD') response.end(); else createReadStream(candidate).pipe(response);
+
+  let pathname;
+  try {
+    pathname = decodeURIComponent(new URL(request.url ?? '/', 'http://localhost').pathname);
+  } catch {
+    response.writeHead(400).end();
+    return true;
+  }
+
+  const filePath = resolve(clientDirectory, `.${pathname}`);
+  const isClientAsset = filePath.startsWith(`${clientDirectory}${sep}`);
+
+  if (!isClientAsset || !existsSync(filePath) || !statSync(filePath).isFile()) {
+    return false;
+  }
+
+  response.writeHead(200, {
+    'Content-Type': contentTypes[extname(filePath)] ?? 'application/octet-stream',
+    'Cache-Control': 'public, max-age=31536000, immutable',
+  });
+
+  if (request.method === 'HEAD') {
+    response.end();
+  } else {
+    createReadStream(filePath).pipe(response);
+  }
+
   return true;
 }
-const server = http.createServer((request, response) => { if (!serveStatic(request, response)) return handler(request, response); });
-const sockets = new WebSocketServer({ noServer: true });
-const clients = new Map();
-const port = Number(process.env.PORT || 4321);
 
-function send(client, message) { if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(message)); }
-async function snapshot(serviceId) {
+const server = http.createServer((request, response) => {
+  if (!serveStaticAsset(request, response)) {
+    return handler(request, response);
+  }
+});
+
+async function fetchSummary() {
   const response = await fetch(`http://127.0.0.1:${port}/api/status`);
-  const all = await response.json();
-  if (!serviceId) return { type: 'snapshot', scope: 'all', ...all };
-  const service = all.services.find((item) => item.id === serviceId);
-  return service ? { type: 'snapshot', scope: 'service', service } : { type: 'error', error: 'Servicio no encontrado.' };
+  if (!response.ok) throw new Error(`Status endpoint returned ${response.status}.`);
+  return response.json();
 }
-sockets.on('connection', async (client) => {
-  clients.set(client, { serviceId: null, previous: '' });
-  const first = await snapshot(null); clients.get(client).previous = JSON.stringify(first); send(client, first);
-  client.on('message', async (raw) => {
-    try {
-      const message = JSON.parse(raw.toString());
-      if (message.action !== 'subscribe') return send(client, { type: 'error', error: 'Acción no válida.' });
-      const serviceId = typeof message.serviceId === 'string' ? message.serviceId : null;
-      const next = await snapshot(serviceId); clients.set(client, { serviceId, previous: JSON.stringify(next) }); send(client, next);
-    } catch { send(client, { type: 'error', error: 'Mensaje JSON no válido.' }); }
-  });
-  client.on('close', () => clients.delete(client));
+
+const realtimeHub = attachRealtimeHub(server, fetchSummary);
+
+function shutdown(signal) {
+  console.info(`Received ${signal}. Shutting down Pulsewatch.`);
+  realtimeHub.close();
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(1), 10_000).unref();
+}
+
+process.once('SIGINT', () => shutdown('SIGINT'));
+process.once('SIGTERM', () => shutdown('SIGTERM'));
+
+server.listen(port, '0.0.0.0', () => {
+  console.info(`Pulsewatch is listening on port ${port}.`);
 });
-setInterval(async () => { for (const [client, subscription] of clients) { try { const next = await snapshot(subscription.serviceId); const serialised = JSON.stringify(next); if (serialised !== subscription.previous) { subscription.previous = serialised; send(client, { type: 'status', ...next, at: new Date().toISOString() }); } } catch { send(client, { type: 'error', error: 'No se pudo consultar el monitor.' }); } } }, 1000);
-server.on('upgrade', (request, socket, head) => {
-  const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
-  if (url.pathname !== '/ws') return socket.destroy();
-  sockets.handleUpgrade(request, socket, head, (client) => sockets.emit('connection', client, request));
-});
-server.listen(port, '0.0.0.0', () => console.log(`Pulsewatch listening on ${port}`));

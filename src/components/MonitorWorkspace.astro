@@ -1,0 +1,104 @@
+<main class="workspace">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow" id="viewKicker">MONITORIZACIÓN EN DIRECTO</p>
+      <h1 id="viewTitle">Vista general</h1>
+    </div>
+    <div class="header-actions">
+      <span class="last-update" id="lastUpdate">Esperando datos…</span>
+      <button class="button button-primary" id="addService" type="button">Añadir servicio</button>
+    </div>
+  </header>
+
+  <section class="view is-active" id="dashboardView" aria-labelledby="viewTitle">
+    <div class="summary-grid" aria-label="Resumen del monitor">
+      <article class="summary-item">
+        <span class="summary-label">SERVICIOS ACTIVOS</span>
+        <strong id="activeTotal">0/0</strong>
+        <small id="activeDetail">Esperando datos</small>
+      </article>
+      <article class="summary-item">
+        <span class="summary-label">DISPONIBILIDAD</span>
+        <strong id="uptimeTotal">—</strong>
+        <small>Estado actual</small>
+      </article>
+      <article class="summary-item">
+        <span class="summary-label">INCIDENCIAS</span>
+        <strong id="incidentTotal">0</strong>
+        <small>En este momento</small>
+      </article>
+      <article class="summary-item summary-clock">
+        <span class="summary-label">HORA LOCAL</span>
+        <strong id="clock">00:00</strong>
+        <small>Europe/Madrid</small>
+      </article>
+    </div>
+
+    <div class="section-heading">
+      <div>
+        <h2>Estado de servicios</h2>
+        <p>Conexiones verificadas por el monitor central.</p>
+      </div>
+      <button class="text-button" data-go="services" type="button">Gestionar todos <span aria-hidden="true">→</span></button>
+    </div>
+
+    <ul class="status-list" id="statusList" aria-live="polite"></ul>
+
+    <footer class="list-footer">
+      <span id="dashboardPagination"></span>
+      <button class="text-button" id="refreshAll" type="button">↻ Reconectar todo</button>
+    </footer>
+  </section>
+
+  <section class="view" id="servicesView" aria-labelledby="viewTitle" hidden>
+    <div class="toolbar">
+      <label class="search-field" for="searchInput">
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <span class="visually-hidden">Buscar servicios</span>
+        <input id="searchInput" placeholder="Buscar por nombre o URL" type="search" />
+      </label>
+      <label class="filter-field" for="statusFilter">
+        <span class="visually-hidden">Filtrar por estado</span>
+        <select id="statusFilter">
+          <option value="all">Todos los estados</option>
+          <option value="online">Operativos</option>
+          <option value="offline">Sin conexión</option>
+          <option value="connecting">Conectando</option>
+          <option value="disabled">Pausados</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="table-wrap">
+      <table class="services-table">
+        <thead>
+          <tr>
+            <th scope="col">Servicio</th>
+            <th scope="col">Endpoint WebSocket</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Última señal</th>
+            <th scope="col"><span class="visually-hidden">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody id="servicesTable"></tbody>
+      </table>
+    </div>
+
+    <nav class="pagination" aria-label="Paginación de servicios">
+      <button id="prevPage" type="button" aria-label="Página anterior">←</button>
+      <span id="pageInfo"></span>
+      <button id="nextPage" type="button" aria-label="Página siguiente">→</button>
+    </nav>
+  </section>
+
+  <section class="view" id="activityView" aria-labelledby="viewTitle" hidden>
+    <div class="activity-header">
+      <div>
+        <h2>Registro de actividad</h2>
+        <p>Eventos observados durante esta sesión del panel.</p>
+      </div>
+      <button class="text-button" id="clearActivity" type="button">Limpiar registro</button>
+    </div>
+    <ol class="activity-list" id="activityList" aria-live="polite"></ol>
+  </section>
+</main>

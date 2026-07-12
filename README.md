@@ -38,6 +38,16 @@ npm start
 
 `npm start` runs the custom Node server. It serves Astro, static assets, REST routes, and the outbound WebSocket on the `PORT` environment variable (or `4321` locally).
 
+## Quality checks
+
+```bash
+npm test
+npm run typecheck
+npm run build
+```
+
+The test suite covers service URL normalization and request validation. Type checking runs independently of the Astro build.
+
 ## How services are monitored
 
 When you register `https://api.example.com`, Pulsewatch connects to:
@@ -60,6 +70,8 @@ All response bodies are JSON and use `Cache-Control: no-store`.
 | `POST` | `/api/services` | Create a service. |
 | `PUT` | `/api/services/:id` | Update a service. |
 | `DELETE` | `/api/services/:id` | Remove a service. |
+| `POST` | `/api/services/reconnect` | Reconnect every enabled service. |
+| `POST` | `/api/services/:id/reconnect` | Reconnect one enabled service. |
 
 ### Global status response
 
