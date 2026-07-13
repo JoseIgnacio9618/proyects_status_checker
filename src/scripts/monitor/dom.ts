@@ -27,6 +27,7 @@ export const elements = {
   prevPage: requiredElement<HTMLButtonElement>('#prevPage'),
   reconnectInterval: requiredElement<HTMLSelectElement>('#reconnectInterval'),
   refreshAll: requiredElement<HTMLButtonElement>('#refreshAll'),
+  reconnectAllServices: requiredElement<HTMLButtonElement>('#reconnectAllServices'),
   searchInput: requiredElement<HTMLInputElement>('#searchInput'),
   serviceDialog: requiredElement<HTMLDialogElement>('#serviceDialog'),
   serviceEnabled: requiredElement<HTMLInputElement>('#serviceEnabled'),

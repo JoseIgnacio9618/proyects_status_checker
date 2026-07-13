@@ -303,7 +303,7 @@ function bindEvents() {
     render();
   });
 
-  elements.refreshAll.addEventListener('click', async () => {
+  const reconnectAll = async () => {
     try {
       const { services } = await monitorApi.reconnectAll();
       renderAndTrack(services);
@@ -311,7 +311,10 @@ function bindEvents() {
     } catch (error) {
       notify(error instanceof Error ? error.message : 'No se pudo iniciar la reconexión.');
     }
-  });
+  };
+
+  elements.refreshAll.addEventListener('click', () => void reconnectAll());
+  elements.reconnectAllServices.addEventListener('click', () => void reconnectAll());
 
   elements.clearActivity.addEventListener('click', () => {
     activity = [];

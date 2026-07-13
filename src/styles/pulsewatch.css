@@ -491,6 +491,10 @@ h2 {
   margin-bottom: 24px;
 }
 
+.toolbar .button {
+  margin-left: auto;
+}
+
 .search-field {
   display: flex;
   width: min(410px, 100%);
@@ -868,6 +872,11 @@ code {
     align-items: flex-start;
     flex-direction: column;
     gap: 15px;
+  }
+
+  .toolbar .button {
+    width: 100%;
+    margin-left: 0;
   }
 
   .topbar {
