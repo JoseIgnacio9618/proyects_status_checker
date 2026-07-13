@@ -35,4 +35,12 @@ export default defineConfig({
   output: 'server',
   adapter: node({ mode: 'middleware' }),
   integrations: [pulsewatchDevWebSocket()],
+  security: {
+    allowedDomains: [
+      {
+        protocol: 'https',
+        hostname: 'proyectsstatuschecker-production.up.railway.app',
+      },
+    ],
+  },
 });
