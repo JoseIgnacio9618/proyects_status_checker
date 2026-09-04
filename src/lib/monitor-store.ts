@@ -57,7 +57,7 @@ function toPublicService(service: LiveService): MonitoredService {
 
   return {
     ...publicService,
-    websocketUrl: toStatusSocketUrl(service.url),
+    websocketUrl: process.env.VERCEL ? service.url : toStatusSocketUrl(service.url),
   };
 }
 
@@ -135,10 +135,33 @@ function scheduleReconnect(service: LiveService) {
   service.reconnectTimer = setTimeout(() => openConnection(service), jitter);
 }
 
-function openConnection(service: LiveService) {
+async function openConnection(service: LiveService) {
   if (!service.enabled) {
     service.state = 'offline';
     emitChange();
+    return;
+  }
+
+  if (process.env.VERCEL) {
+    service.state = 'connecting';
+    service.latency = undefined;
+    emitChange();
+    const startedAt = Date.now();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), handshakeTimeout);
+
+    try {
+      const response = await fetch(service.url, { signal: controller.signal });
+      service.state = response.ok ? 'online' : 'offline';
+      service.latency = Date.now() - startedAt;
+      service.lastSeen = new Date().toISOString();
+    } catch {
+      service.state = 'offline';
+      service.latency = undefined;
+    } finally {
+      clearTimeout(timeout);
+      emitChange();
+    }
     return;
   }
 
@@ -298,6 +321,9 @@ async function ensureStarted() {
 
 export async function listServices() {
   await ensureStarted();
+  if (process.env.VERCEL) {
+    await Promise.all([...registry.values()].filter((service) => service.enabled).map(openConnection));
+  }
   return [...registry.values()].map(toPublicService);
 }
 
@@ -378,5 +404,8 @@ export async function reconnectAllServices() {
 
 export async function summary(): Promise<MonitorSummary> {
   await ensureStarted();
+  if (process.env.VERCEL) {
+    await Promise.all([...registry.values()].filter((service) => service.enabled).map(openConnection));
+  }
   return buildSummary();
 }
