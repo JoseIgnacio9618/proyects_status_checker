@@ -34,9 +34,9 @@ const dataDirectory = process.env.RAILWAY_VOLUME_MOUNT_PATH
 const dataFile = join(dataDirectory, 'services.json');
 
 const defaultServices: ServiceConfiguration[] = [
-  { id: 'demo-core', name: 'Core API', url: 'https://api.ejemplo.com', enabled: true },
-  { id: 'demo-auth', name: 'Servicio de identidad', url: 'https://auth.ejemplo.com', enabled: true },
-  { id: 'demo-pay', name: 'Pasarela de pagos', url: 'https://payments.ejemplo.com', enabled: false },
+  { id: 'regismatic-api', name: 'Regismatic API', url: 'https://regismatic-backend.vercel.app/health', enabled: true },
+  { id: 'paylink-api', name: 'Paylink API', url: 'https://paylink-generator.vercel.app/api/status', enabled: true },
+  { id: 'buscador-supermercados', name: 'Buscador de supermercados', url: 'https://buscador-supermercados.vercel.app', enabled: true },
 ];
 
 const registry = new Map<string, LiveService>();
