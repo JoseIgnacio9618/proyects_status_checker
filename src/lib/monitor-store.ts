@@ -35,6 +35,7 @@ const dataFile = join(dataDirectory, 'services.json');
 
 const defaultServices: ServiceConfiguration[] = [
   { id: 'regismatic-api', name: 'Regismatic API', url: 'https://regismatic-backend.vercel.app/health', enabled: true },
+  { id: 'regismatic-frontend', name: 'Regismatic frontend', url: 'https://regismatic-frontend.vercel.app', enabled: true },
   { id: 'paylink-api', name: 'Paylink API', url: 'https://paylink-generator.vercel.app/api/status', enabled: true },
   { id: 'buscador-supermercados', name: 'Buscador de supermercados', url: 'https://buscador-supermercados.vercel.app', enabled: true },
 ];
