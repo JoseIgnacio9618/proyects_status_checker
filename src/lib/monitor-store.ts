@@ -205,6 +205,11 @@ function openConnection(service: LiveService) {
 }
 
 async function persistConfiguration() {
+  // Vercel Functions have an ephemeral, read-only deployment filesystem. The
+  // monitor stays usable there while configuration persistence is provided by
+  // the remote store; local/Railway deployments retain the JSON file behavior.
+  if (process.env.VERCEL) return;
+
   const payload: ServiceDataFile = {
     version: 1,
     services: serializableServices(),
@@ -256,6 +261,11 @@ function isServiceConfiguration(value: unknown): value is ServiceConfiguration {
 }
 
 async function loadConfiguration() {
+  if (process.env.VERCEL) {
+    hydrate(defaultServices);
+    return;
+  }
+
   let services = defaultServices;
 
   try {
